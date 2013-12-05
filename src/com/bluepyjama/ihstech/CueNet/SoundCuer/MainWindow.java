@@ -4,10 +4,25 @@
  */
 package com.bluepyjama.ihstech.CueNet.SoundCuer;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import javax.swing.JFileChooser;
+import javax.swing.RowSorter;
+import javax.swing.SortOrder;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableModel;
+import javax.swing.table.TableRowSorter;
 
 /**
  *
@@ -20,7 +35,13 @@ public class MainWindow extends javax.swing.JPanel {
      */
     public MainWindow() {
         initComponents();
-        
+        TableRowSorter<TableModel> sorter = new TableRowSorter<TableModel>(cueList.getModel());
+        cueList.setRowSorter(sorter);
+        List<RowSorter.SortKey> sortKeys = new ArrayList<RowSorter.SortKey>();
+        sortKeys.add(new RowSorter.SortKey(1, SortOrder.DESCENDING));
+        sorter.setSortKeys(sortKeys);
+
+
     }
 
     /**
@@ -51,10 +72,10 @@ public class MainWindow extends javax.swing.JPanel {
             }
         ) {
             Class[] types = new Class [] {
-                java.lang.Integer.class, java.lang.String.class, java.lang.Object.class
+                java.lang.String.class, java.lang.String.class, java.lang.String.class
             };
             boolean[] canEdit = new boolean [] {
-                false, false, true
+                false, false, false
             };
 
             public Class getColumnClass(int columnIndex) {
@@ -89,6 +110,11 @@ public class MainWindow extends javax.swing.JPanel {
         saveButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/bluepyjama/ihstech/CueNet/SoundCuer/icons/document-save.png"))); // NOI18N
         saveButton.setText("Save List");
         saveButton.setToolTipText("");
+        saveButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -130,9 +156,9 @@ public class MainWindow extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void openButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openButtonActionPerformed
-       final JFileChooser fc = new JFileChooser();
-       fc.setFileFilter(new ShowFileFilter());
-fc.setAcceptAllFileFilterUsed(false);
+        final JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(new ShowFileFilter());
+        fc.setAcceptAllFileFilterUsed(false);
 
         //In response to a button click:
         int returnVal = fc.showOpenDialog(null);
@@ -140,11 +166,55 @@ fc.setAcceptAllFileFilterUsed(false);
             File file = fc.getSelectedFile();
             //This is where a real application would open the file.
             System.out.println(file.getName());
+            try (InputStream in = Files.newInputStream(file.toPath()); BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+                String line = null;
+                DefaultTableModel model = (DefaultTableModel) cueList.getModel();
+                model.setNumRows(0);
+                System.out.println("Cleared Table!");
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+
+                    int cue = Integer.parseInt(line.substring(0, line.indexOf('|')));
+                    String title = line.substring(line.indexOf('|') + 1, line.indexOf('|', line.indexOf('|') + 1));
+                    String path = line.substring(line.indexOf('|', line.indexOf('|') + 1) + 1);
+                    model.addRow(new Object[]{cue, title, path});
+                }
+            } catch (Exception x) {
+                System.err.println(x);
+            }
         } else {
             System.out.println("Cancelled");
         }
     }//GEN-LAST:event_openButtonActionPerformed
 
+    private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
+        final JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(new ShowFileFilter());
+        fc.setAcceptAllFileFilterUsed(false);
+
+        //In response to a button click:
+        int returnVal = fc.showSaveDialog(null);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            try{
+            File file = fc.getSelectedFile();
+            //This is where a real application would open the file.
+            System.out.println(file.getName());
+            FileOutputStream fos = new FileOutputStream(file);
+            OutputStreamWriter out = new OutputStreamWriter(fos); 
+            List<String> lines = new ArrayList<>();
+            for(int i = 0; i<cueList.getModel().getRowCount();i++){
+                lines.add(Integer.toString((int)cueList.getValueAt(i, 0))+"|"+(String)cueList.getValueAt(i, 1)+"|"+(String)cueList.getValueAt(i,2));
+            }
+             Path path = Paths.get(file.getAbsolutePath());
+    Files.write(path, lines,StandardCharsets.UTF_8);
+            System.out.println(lines);
+            }catch(Exception e){
+                System.out.println(e);
+            }
+        } else {
+            System.out.println("Cancelled");
+        }
+    }//GEN-LAST:event_saveButtonActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addButton;
     private javax.swing.JTable cueList;
